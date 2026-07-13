@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0a1620;
@@ -81,22 +80,36 @@
     margin-bottom:14px; flex-wrap:wrap; gap:8px;
   }
   .panel-title{font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:600;}
-  .legend-note{font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--muted);}
+  .legend-note{font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--muted); display:flex; align-items:center; gap:14px;}
   .legend-note .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;}
-  .legend-note.click-hint{opacity:.85;}
 
   .chart-box{
     position:relative;
     width:100%;
-    height:380px;
   }
-  .chart-box canvas{
+  .chart-box svg{
+    width:100%;
+    height:auto;
+    display:block;
+    overflow:visible;
+  }
+  .chart-tooltip{
     position:absolute;
-    top:0; left:0;
-    width:100% !important;
-    height:100% !important;
-    cursor:pointer;
+    pointer-events:none;
+    background:#0f202c;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--text);
+    opacity:0;
+    transition:opacity .12s ease;
+    white-space:nowrap;
+    z-index:5;
   }
+  .chart-tooltip b{color:var(--amber);}
+  .chart-tooltip .cyan{color:var(--cyan);}
 
   .winner{
     display:flex; align-items:center; gap:16px;
@@ -115,8 +128,7 @@
     text-align:left; color:var(--muted); font-weight:500; text-transform:uppercase;
     font-size:10.5px; letter-spacing:.08em; padding:10px 8px; border-bottom:1px solid var(--line);
   }
-  tbody td{padding:10px 8px; border-bottom:1px solid rgba(31,57,71,.6); transition:background .2s ease;}
-  tbody tr{transition:background .2s ease;}
+  tbody td{padding:10px 8px; border-bottom:1px solid rgba(31,57,71,.6);}
   tbody tr:last-child td{border-bottom:none;}
   tbody tr.top-row{background:rgba(227,150,62,.07);}
   tbody tr:hover{background:rgba(79,209,197,.08);}
@@ -145,7 +157,7 @@
   <div class="ticker"><span class="dot"></span>SAHARAN BLEND · 2000–2022 · 7 MODELS BENCHMARKED</div>
 
   <h1>Crude Oil Price Forecast — <span>Model Performance</span></h1>
-  <p class="subtitle">Seven regression and deep learning models were trained to predict the Saharan Blend price, evaluated on held-out test data across two granularities. Switch between daily and monthly data — hover the chart for exact values, click the legend to isolate R² or RMSE.</p>
+  <p class="subtitle">Seven regression and deep learning models were trained to predict the Saharan Blend price, evaluated on held-out test data across two granularities. Switch between daily and monthly data — hover the chart for exact values.</p>
 
   <div class="tabs" role="tablist">
     <button class="tab active" data-target="daily">Daily Data</button>
@@ -163,15 +175,21 @@
 
     <div class="winner">
       <div class="winner-badge">Best model</div>
-      <div class="winner-text"><b>RF-XGB</b> — RMSE <b>0.24</b> · R² <b>1.00</b></div>
+      <div class="winner-text"><b>CNN-LSTM</b> — RMSE <b>0.24</b> · R² <b>1.00</b></div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
         <div class="panel-title">Comparison of Regression Models — Daily data</div>
-        <div class="legend-note click-hint">Click legend items below the chart to toggle R² / RMSE</div>
+        <div class="legend-note">
+          <span><span class="sw" style="background:#4fd1c5;"></span>R² (bars)</span>
+          <span><span class="sw" style="background:#e3963e;"></span>RMSE (line)</span>
+        </div>
       </div>
-      <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+      <div class="chart-box" id="box-daily">
+        <svg id="svg-daily"></svg>
+        <div class="chart-tooltip" id="tooltip-daily"></div>
+      </div>
     </div>
 
     <div class="panel" style="padding:0;">
@@ -186,8 +204,8 @@
           <tr><td class="model-name">XGB</td><td><div class="bar-cell"><span>19.82</span><div class="bar-track"><div class="bar-fill" style="width:91%;"></div></div></div></td><td>0.44</td><td></td></tr>
           <tr><td class="model-name">CNN</td><td><div class="bar-cell"><span>5.29</span><div class="bar-track"><div class="bar-fill" style="width:24%;"></div></div></div></td><td class="r2-good">0.96</td><td></td></tr>
           <tr><td class="model-name">LSTM</td><td><div class="bar-cell"><span>10.41</span><div class="bar-track"><div class="bar-fill" style="width:48%;"></div></div></div></td><td class="r2-good">0.72</td><td></td></tr>
-          <tr><td class="model-name">CNN-LSTM</td><td><div class="bar-cell"><span>0.56</span><div class="bar-track"><div class="bar-fill" style="width:3%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
-          <tr class="top-row"><td class="model-name">RF-XGB ★</td><td><div class="bar-cell"><span>0.24</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr><td class="model-name">CNN-LSTM</td><td><div class="bar-cell"><span>0.24</span><div class="bar-track"><div class="bar-fill" style="width:3%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr class="top-row"><td class="model-name">RF-XGB ★</td><td><div class="bar-cell"><span>0.56</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
         </tbody>
       </table>
       <div class="insight">On high-frequency daily data, sequence-aware and hybrid models dominate. Both hybrids (<b>CNN-LSTM</b> and <b>RF-XGB</b>) reach near-perfect fit, but <b>RF-XGB</b> edges ahead with the lowest RMSE ($0.24/bbl). Classical SVR and untuned tree models struggle with the daily noise level, R² capped around 0.3–0.5.</div>
@@ -212,9 +230,15 @@
     <div class="panel">
       <div class="panel-head">
         <div class="panel-title">Comparison of Regression Models — Monthly data</div>
-        <div class="legend-note click-hint">Click legend items below the chart to toggle R² / RMSE</div>
+        <div class="legend-note">
+          <span><span class="sw" style="background:#4fd1c5;"></span>R² (bars)</span>
+          <span><span class="sw" style="background:#e3963e;"></span>RMSE (line)</span>
+        </div>
       </div>
-      <div class="chart-box"><canvas id="chart-monthly"></canvas></div>
+      <div class="chart-box" id="box-monthly">
+        <svg id="svg-monthly"></svg>
+        <div class="chart-tooltip" id="tooltip-monthly"></div>
+      </div>
     </div>
 
     <div class="panel" style="padding:0;">
@@ -243,7 +267,7 @@
 </div>
 
 <script>
-  // ---- Tab toggle: only switches which section is visible, charts are already built below ----
+  // ---- Tab toggle ----
   document.querySelectorAll('.tab').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
@@ -253,131 +277,160 @@
     });
   });
 
-  const axisColor = '#7d97a6';
-  const axisFont = { family:'JetBrains Mono', size:10.5 };
-  const commonGrid = 'rgba(31,57,71,.5)';
-  const tooltipStyle = {
-    backgroundColor:'#0f202c',
-    borderColor:'#1f3947',
-    borderWidth:1,
-    titleFont:{ family:'JetBrains Mono' },
-    bodyFont:{ family:'JetBrains Mono' },
-    padding:10,
-    displayColors:true
-  };
-  const legendStyle = {
-    display:true,
-    position:'bottom',
-    labels:{
-      color:axisColor,
-      font:{ family:'JetBrains Mono', size:11 },
-      usePointStyle:true,
-      boxWidth:8,
-      padding:16
-    }
-  };
+  // ---- Hand-drawn SVG combo chart: bars = R2 (left axis), line = RMSE (right axis) ----
+  // No external library required, so it renders anywhere (including offline previews).
+  function drawComboChart(svgId, tooltipId, labels, r2Vals, rmseVals, r2Min, r2Max){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.getElementById(svgId);
+    const tooltip = document.getElementById(tooltipId);
+    const box = svg.closest('.chart-box');
 
-  // ---- Chart 1: Daily data (values hardcoded directly here, order matches SVR/RF/XGB/CNN/LSTM/CNN-LSTM/RF-XGB) ----
-  new Chart(document.getElementById('chart-daily').getContext('2d'), {
-    data:{
-      labels: ['SVR', 'RF', 'XGB', 'CNN', 'LSTM', 'CNN-LSTM', 'RF-XGB'],
-      datasets:[
-        {
-          type:'bar',
-          label:'R²',
-          data: [0.32, 0.51, 0.44, 0.96, 0.72, 1.00, 1.00],
-          backgroundColor:'rgba(79,209,197,.75)',
-          hoverBackgroundColor:'rgba(79,209,197,1)',
-          borderRadius:4,
-          yAxisID:'y'
-        },
-        {
-          type:'line',
-          label:'RMSE',
-          data: [21.81, 18.52, 19.82, 5.29, 10.41, 0.56, 0.24],
-          borderColor:'#e3963e',
-          backgroundColor:'#e3963e',
-          pointBackgroundColor:'#e3963e',
-          pointHoverRadius:7,
-          pointRadius:5,
-          borderWidth:2.5,
-          tension:.15,
-          yAxisID:'y1'
-        }
-      ]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{ mode:'index', intersect:false },
-      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-      plugins:{ legend: legendStyle, tooltip: tooltipStyle },
-      scales:{
-        x:{ ticks:{ color:axisColor, font:axisFont }, grid:{ display:false } },
-        y:{
-          position:'left', min:0, max:1,
-          title:{ display:true, text:'R-squared', color:axisColor, font:axisFont },
-          ticks:{ color:axisColor, font:axisFont }, grid:{ color:commonGrid }
-        },
-        y1:{
-          position:'right', min:0,
-          title:{ display:true, text:'RMSE', color:'#e3963e', font:axisFont },
-          ticks:{ color:'#e3963e', font:axisFont }, grid:{ display:false }
-        }
-      }
-    }
-  });
+    const W = 800, H = 380;
+    const marginLeft = 46, marginRight = 46, marginTop = 16, marginBottom = 40;
+    const plotW = W - marginLeft - marginRight;
+    const plotH = H - marginTop - marginBottom;
 
-  // ---- Chart 2: Monthly data (values hardcoded directly here) ----
-  new Chart(document.getElementById('chart-monthly').getContext('2d'), {
-    data:{
-      labels: ['SVR', 'RF', 'XGBoost', 'LSTM', 'CNN', 'CNN-LSTM', 'RF-XGB'],
-      datasets:[
-        {
-          type:'bar',
-          label:'R²',
-          data: [0.33, 0.51, 0.44, 0.99, 1.00, 1.00, 0.46],
-          backgroundColor:'rgba(79,209,197,.75)',
-          hoverBackgroundColor:'rgba(79,209,197,1)',
-          borderRadius:4,
-          yAxisID:'y'
-        },
-        {
-          type:'line',
-          label:'RMSE',
-          data: [21.69, 18.5, 19.83, 2.008, 1.58, 0.21, 19.44],
-          borderColor:'#e3963e',
-          backgroundColor:'#e3963e',
-          pointBackgroundColor:'#e3963e',
-          pointHoverRadius:7,
-          pointRadius:5,
-          borderWidth:2.5,
-          tension:.15,
-          yAxisID:'y1'
-        }
-      ]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{ mode:'index', intersect:false },
-      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-      plugins:{ legend: legendStyle, tooltip: tooltipStyle },
-      scales:{
-        x:{ ticks:{ color:axisColor, font:axisFont }, grid:{ display:false } },
-        y:{
-          position:'left', min:0, max:1,
-          title:{ display:true, text:'R-squared', color:axisColor, font:axisFont },
-          ticks:{ color:axisColor, font:axisFont }, grid:{ color:commonGrid }
-        },
-        y1:{
-          position:'right', min:0,
-          title:{ display:true, text:'RMSE', color:'#e3963e', font:axisFont },
-          ticks:{ color:'#e3963e', font:axisFont }, grid:{ display:false }
-        }
-      }
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = '';
+
+    const n = labels.length;
+    const band = plotW / n;
+    const barW = band * 0.5;
+    const rmseMax = Math.max(...rmseVals) * 1.15;
+
+    function yR2(v){ return marginTop + plotH * (1 - (v - r2Min) / (r2Max - r2Min)); }
+    function yRmse(v){ return marginTop + plotH * (1 - v / rmseMax); }
+    function xCenter(i){ return marginLeft + band * i + band / 2; }
+
+    function el(tag, attrs){
+      const e = document.createElementNS(svgNS, tag);
+      for(const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
     }
-  });
+
+    // gridlines + left/right axis ticks
+    const steps = 5;
+    for(let s=0; s<=steps; s++){
+      const frac = s/steps;
+      const yy = marginTop + plotH*frac;
+      svg.appendChild(el('line', { x1:marginLeft, x2:W-marginRight, y1:yy, y2:yy, stroke:'rgba(31,57,71,.6)', 'stroke-width':1 }));
+
+      const r2Val = r2Max - frac*(r2Max - r2Min);
+      const leftLabel = el('text', { x:marginLeft-8, y:yy+4, 'text-anchor':'end', fill:'#7d97a6', 'font-family':'JetBrains Mono, monospace', 'font-size':10.5 });
+      leftLabel.textContent = r2Val.toFixed(1);
+      svg.appendChild(leftLabel);
+
+      const rmseVal = rmseMax * (1-frac);
+      const rightLabel = el('text', { x:W-marginRight+8, y:yy+4, 'text-anchor':'start', fill:'#e3963e', 'font-family':'JetBrains Mono, monospace', 'font-size':10.5 });
+      rightLabel.textContent = rmseVal.toFixed(1);
+      svg.appendChild(rightLabel);
+    }
+
+    // zero baseline for bars (bold if r2Min < 0)
+    const zeroY = yR2(0);
+    if(r2Min < 0){
+      svg.appendChild(el('line', { x1:marginLeft, x2:W-marginRight, y1:zeroY, y2:zeroY, stroke:'rgba(232,237,241,.35)', 'stroke-width':1 }));
+    }
+
+    // bars (R2)
+    labels.forEach((lab, i)=>{
+      const val = r2Vals[i];
+      const cx = xCenter(i);
+      const yv = yR2(val);
+      const top = Math.min(zeroY, yv);
+      const h = Math.max(1, Math.abs(zeroY - yv));
+      const bar = el('rect', {
+        x: cx - barW/2, y: top, width: barW, height: h,
+        rx: 3, fill: 'rgba(79,209,197,.75)', 'data-base-fill':'rgba(79,209,197,.75)'
+      });
+      bar.style.cursor = 'pointer';
+      bar.addEventListener('mouseenter', (e)=>{
+        bar.setAttribute('fill', 'rgba(79,209,197,1)');
+        tooltip.innerHTML = `<b>${lab}</b><br><span class="cyan">R\u00b2: ${val.toFixed(2)}</span><br>RMSE: ${rmseVals[i].toFixed(2)}`;
+        tooltip.style.opacity = 1;
+        positionTooltip(e);
+      });
+      bar.addEventListener('mousemove', positionTooltip);
+      bar.addEventListener('mouseleave', ()=>{
+        bar.setAttribute('fill', 'rgba(79,209,197,.75)');
+        tooltip.style.opacity = 0;
+      });
+      function positionTooltip(e){
+        const rect = box.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+      }
+      svg.appendChild(bar);
+
+      const xLabel = el('text', { x:cx, y:H-marginBottom+20, 'text-anchor':'middle', fill:'#7d97a6', 'font-family':'JetBrains Mono, monospace', 'font-size':11 });
+      xLabel.textContent = lab;
+      svg.appendChild(xLabel);
+    });
+
+    // line (RMSE)
+    const points = labels.map((lab,i)=> `${xCenter(i)},${yRmse(rmseVals[i])}`).join(' ');
+    svg.appendChild(el('polyline', { points, fill:'none', stroke:'#e3963e', 'stroke-width':2.5, 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
+
+    labels.forEach((lab,i)=>{
+      const cx = xCenter(i);
+      const cy = yRmse(rmseVals[i]);
+      const dot = el('circle', { cx, cy, r:5, fill:'#e3963e', stroke:'#0f202c', 'stroke-width':2 });
+      dot.style.cursor = 'pointer';
+      dot.addEventListener('mouseenter', (e)=>{
+        dot.setAttribute('r', 7);
+        tooltip.innerHTML = `<b>${lab}</b><br><span class="cyan">R\u00b2: ${r2Vals[i].toFixed(2)}</span><br>RMSE: ${rmseVals[i].toFixed(2)}`;
+        tooltip.style.opacity = 1;
+        positionTooltipDot(e);
+      });
+      dot.addEventListener('mousemove', positionTooltipDot);
+      dot.addEventListener('mouseleave', ()=>{
+        dot.setAttribute('r', 5);
+        tooltip.style.opacity = 0;
+      });
+      function positionTooltipDot(e){
+        const rect = box.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+      }
+      svg.appendChild(dot);
+    });
+
+    // axis titles
+    const leftTitle = el('text', {
+      x:-(H/2), y:16, 'text-anchor':'middle', fill:'#7d97a6',
+      'font-family':'JetBrains Mono, monospace', 'font-size':11,
+      transform:'rotate(-90)'
+    });
+    leftTitle.textContent = 'R-squared';
+    svg.appendChild(leftTitle);
+
+    const rightTitle = el('text', {
+      x:(H/2), y:W-14, 'text-anchor':'middle', fill:'#e3963e',
+      'font-family':'JetBrains Mono, monospace', 'font-size':11,
+      transform:'rotate(90)'
+    });
+    rightTitle.textContent = 'RMSE';
+    svg.appendChild(rightTitle);
+  }
+
+  // Daily data
+  drawComboChart(
+    'svg-daily', 'tooltip-daily',
+    ['SVR', 'RF', 'XGB', 'CNN', 'LSTM', 'CNN-LSTM', 'RF-XGB'],
+    [0.32, 0.51, 0.44, 0.96, 0.72, 1.00, 1.00],
+    [21.81, 18.52, 19.82, 5.29, 10.41, 0.24, 0.56],
+    0, 1
+  );
+
+  // Monthly data
+  drawComboChart(
+    'svg-monthly', 'tooltip-monthly',
+    ['SVR', 'RF', 'XGBoost', 'LSTM', 'CNN', 'CNN-LSTM', 'RF-XGB'],
+    [0.33, 0.51, 0.44, 0.99, 1.00, 1.00, 0.46],
+    [21.69, 18.5, 19.83, 2.008, 1.58, 0.21, 19.44],
+    0, 1
+  );
 </script>
 </body>
 </html>
