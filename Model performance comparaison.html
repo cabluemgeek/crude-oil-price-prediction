@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crude Oil Price Forecast — Model Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a1620;
+    --panel:#0f202c;
+    --panel-2:#132a38;
+    --line:#1f3947;
+    --text:#e8edf1;
+    --muted:#7d97a6;
+    --amber:#e3963e;
+    --amber-dim:#7a5c34;
+    --cyan:#4fd1c5;
+    --good:#6fcf97;
+    --bad:#e5686b;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 600px at 15% -10%, #122633 0%, var(--bg) 55%), var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    padding:28px 20px 40px;
+    min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+
+  /* ticker header */
+  .ticker{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.12em;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 8px 1px rgba(227,150,62,.7);
+    animation:pulse 2.4s ease-in-out infinite;
+    flex-shrink:0;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1);}
+    50%{opacity:.45;transform:scale(.8);}
+  }
+
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:clamp(22px,3.2vw,30px);
+    margin:0 0 6px;
+    letter-spacing:-.01em;
+  }
+  h1 span{color:var(--amber);}
+  .subtitle{
+    color:var(--muted);
+    font-size:14px;
+    max-width:640px;
+    line-height:1.55;
+    margin-bottom:26px;
+  }
+
+  /* granularity tabs */
+  .tabs{
+    display:inline-flex;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:4px;
+    margin-bottom:22px;
+    gap:2px;
+  }
+  .tab{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:9px 20px;
+    border-radius:999px;
+    color:var(--muted);
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    transition:color .25s ease, background .25s ease;
+    position:relative;
+  }
+  .tab.active{
+    color:#0a1620;
+    background:var(--amber);
+    font-weight:600;
+  }
+  .tab:not(.active):hover{color:var(--text);}
+
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:20px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--muted);
+  }
+  .meta-chip{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 10px;
+    background:var(--panel);
+  }
+  .meta-chip b{color:var(--text); font-weight:600;}
+
+  /* panel */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 22px 10px;
+    margin-bottom:18px;
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .panel-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px;
+    font-weight:600;
+  }
+  .legend-note{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--muted);
+  }
+  .legend-note .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+  canvas{max-height:340px;}
+
+  /* winner banner */
+  .winner{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    background:linear-gradient(90deg, rgba(227,150,62,.14), rgba(227,150,62,.02));
+    border:1px solid var(--amber-dim);
+    border-radius:var(--radius);
+    padding:16px 20px;
+    margin-bottom:18px;
+  }
+  .winner-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--bg);
+    background:var(--amber);
+    padding:5px 10px;
+    border-radius:5px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .winner-text{font-size:13.5px; color:var(--text); line-height:1.5;}
+  .winner-text b{color:var(--amber); font-family:'JetBrains Mono', monospace;}
+
+  /* table */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+  }
+  thead th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    text-transform:uppercase;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    padding:10px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:10px 8px;
+    border-bottom:1px solid rgba(31,57,71,.6);
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.top-row{background:rgba(227,150,62,.07);}
+  .model-name{color:var(--text); font-weight:600;}
+  .r2-good{color:var(--good);}
+  .r2-bad{color:var(--bad);}
+  .bar-cell{display:flex; align-items:center; gap:8px;}
+  .bar-track{flex:1; height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--cyan); border-radius:3px;}
+
+  .insight{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.65;
+    padding:16px 22px 20px;
+  }
+  .insight b{color:var(--text);}
+
+  .footer-note{
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--muted);
+    margin-top:22px;
+    opacity:.7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="ticker"><span class="dot"></span>SAHARAN BLEND · 2000–2022 · 7 MODELS BENCHMARKED</div>
+
+  <h1>Crude Oil Price Forecast — <span>Model Performance</span></h1>
+  <p class="subtitle">Seven regression and deep learning models were trained to predict the Saharan Blend price, evaluated on held-out test data across two granularities. Switch between daily and monthly data to compare how each model responds to dataset size and noise.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-set="daily">Daily Data</button>
+    <button class="tab" data-set="monthly">Monthly Data</button>
+  </div>
+
+  <div class="meta-row" id="metaRow"></div>
+
+  <div class="winner" id="winnerBanner"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title" id="chartTitle">Test-set RMSE &amp; R² by model</div>
+      <div class="legend-note">
+        <span class="sw" style="background:var(--cyan);"></span>RMSE (lower is better)
+        &nbsp;&nbsp;<span class="sw" style="background:var(--amber);"></span>R² (higher is better)
+      </div>
+    </div>
+    <canvas id="perfChart"></canvas>
+  </div>
+
+  <div class="panel" style="padding:0;">
+    <div style="padding:22px 22px 4px;">
+      <div class="panel-title">Full results table</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Model</th><th>RMSE ($/bbl)</th><th>R²</th><th></th></tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="insight" id="insightText"></div>
+  </div>
+
+  <div class="footer-note">TRAIN / VALIDATION / TEST SPLIT · METRICS COMPUTED ON UNSEEN TEST DATA</div>
+
+</div>
+
+<script>
+const DATA = {
+  daily: {
+    n: "≈ 8,385 daily observations",
+    split: "64% train · 16% val · 20% test",
+    models: [
+      { name: "SVR",          rmse: 21.81, r2: 0.32 },
+      { name: "Random Forest",rmse: 18.52, r2: 0.51 },
+      { name: "XGBoost",      rmse: 19.82, r2: 0.44 },
+      { name: "LSTM",         rmse: 10.41, r2: 0.72 },
+      { name: "CNN",          rmse: 5.29,  r2: 0.96 },
+      { name: "CNN-LSTM",     rmse: 0.56,  r2: 1.00 },
+      { name: "RF-XGBoost",   rmse: 0.24,  r2: 1.00 }
+    ],
+    winner: "RF-XGBoost",
+    insight: "On high-frequency daily data, sequence-aware and hybrid models dominate. Both hybrids (<b>CNN-LSTM</b> and <b>RF-XGBoost</b>) reach near-perfect fit, but <b>RF-XGBoost</b> edges ahead with the lowest RMSE ($0.24/bbl). Classical SVR and untuned tree models struggle with the daily noise level, R² capped around 0.3–0.5."
+  },
+  monthly: {
+    n: "276 monthly observations",
+    split: "64% train · 16% val · 20% test",
+    models: [
+      { name: "SVR",          rmse: 11.88, r2: 0.83 },
+      { name: "Random Forest",rmse: 5.95,  r2: 0.96 },
+      { name: "XGBoost",      rmse: 5.51,  r2: 0.96 },
+      { name: "LSTM",         rmse: 25.67, r2: 0.21 },
+      { name: "CNN",          rmse: 24.94, r2: 0.25 },
+      { name: "CNN-LSTM",     rmse: 59.84, r2: -3.31 },
+      { name: "RF-XGBoost",   rmse: 5.12,  r2: 0.97 }
+    ],
+    winner: "RF-XGBoost",
+    insight: "With only 276 monthly points, deep learning collapses: <b>CNN-LSTM</b> overfits so badly it performs worse than predicting the mean (R² = -3.31). Tree-based ensembles are far more data-efficient here — <b>RF-XGBoost</b>, <b>XGBoost</b> and <b>Random Forest</b> all clear R² ≥ 0.96, confirming that model choice should follow dataset size, not just architecture sophistication."
+  }
+};
+
+let chart;
+const ctx = document.getElementById('perfChart').getContext('2d');
+
+function maxRmse(models){ return Math.max(...models.map(m => m.rmse)); }
+
+function render(key){
+  const d = DATA[key];
+  const labels = d.models.map(m => m.name);
+  const rmseVals = d.models.map(m => m.rmse);
+  const r2Vals = d.models.map(m => m.r2);
+
+  // meta chips
+  document.getElementById('metaRow').innerHTML = `
+    <div class="meta-chip">Observations: <b>${d.n}</b></div>
+    <div class="meta-chip">Split: <b>${d.split}</b></div>
+    <div class="meta-chip">Target: <b>Saharan Blend price ($/bbl)</b></div>
+  `;
+
+  // winner banner
+  const w = d.models.find(m => m.name === d.winner);
+  document.getElementById('winnerBanner').innerHTML = `
+    <div class="winner-badge">Best model</div>
+    <div class="winner-text"><b>${w.name}</b> — RMSE <b>${w.rmse.toFixed(2)}</b> · R² <b>${w.r2.toFixed(2)}</b> on the ${key} dataset.</div>
+  `;
+
+  document.getElementById('chartTitle').textContent = `Test-set RMSE & R² by model — ${key === 'daily' ? 'Daily' : 'Monthly'} data`;
+
+  // table
+  const maxR = maxRmse(d.models);
+  document.getElementById('tableBody').innerHTML = d.models.map(m => {
+    const isTop = m.name === d.winner;
+    const r2class = m.r2 >= 0.7 ? 'r2-good' : (m.r2 < 0 ? 'r2-bad' : '');
+    const barPct = Math.max(4, (m.rmse / maxR) * 100);
+    return `
+      <tr class="${isTop ? 'top-row' : ''}">
+        <td class="model-name">${m.name}${isTop ? ' ★' : ''}</td>
+        <td>
+          <div class="bar-cell">
+            <span>${m.rmse.toFixed(2)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${barPct}%;"></div></div>
+          </div>
+        </td>
+        <td class="${r2class}">${m.r2.toFixed(2)}</td>
+        <td></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('insightText').innerHTML = d.insight;
+
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    data:{
+      labels,
+      datasets:[
+        {
+          type:'bar',
+          label:'RMSE',
+          data: rmseVals,
+          backgroundColor:'rgba(79,209,197,.75)',
+          borderRadius:4,
+          yAxisID:'y'
+        },
+        {
+          type:'line',
+          label:'R²',
+          data: r2Vals,
+          borderColor:'#e3963e',
+          backgroundColor:'#e3963e',
+          pointBackgroundColor:'#e3963e',
+          pointRadius:4,
+          tension:.3,
+          yAxisID:'y1'
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#0f202c',
+          borderColor:'#1f3947',
+          borderWidth:1,
+          titleFont:{ family:'JetBrains Mono' },
+          bodyFont:{ family:'JetBrains Mono' },
+          padding:10
+        }
+      },
+      scales:{
+        x:{
+          ticks:{ color:'#7d97a6', font:{ family:'JetBrains Mono', size:11 } },
+          grid:{ color:'rgba(31,57,71,.5)' }
+        },
+        y:{
+          position:'left',
+          title:{ display:true, text:'RMSE', color:'#7d97a6', font:{ family:'JetBrains Mono', size:10 } },
+          ticks:{ color:'#7d97a6', font:{ family:'JetBrains Mono', size:10 } },
+          grid:{ color:'rgba(31,57,71,.5)' }
+        },
+        y1:{
+          position:'right',
+          min: key === 'monthly' ? -4 : 0,
+          max:1,
+          title:{ display:true, text:'R²', color:'#7d97a6', font:{ family:'JetBrains Mono', size:10 } },
+          ticks:{ color:'#7d97a6', font:{ family:'JetBrains Mono', size:10 } },
+          grid:{ display:false }
+        }
+      }
+    }
+  });
+}
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render(btn.dataset.set);
+  });
+});
+
+render('daily');
+</script>
+</body>
+</html>
