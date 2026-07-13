@@ -175,7 +175,7 @@
 
     <div class="winner">
       <div class="winner-badge">Best model</div>
-      <div class="winner-text"><b>CNN-LSTM</b> — RMSE <b>0.24</b> · R² <b>1.00</b></div>
+      <div class="winner-text"><b>RF-XGB</b> — RMSE <b>0.24</b> · R² <b>1.00</b></div>
     </div>
 
     <div class="panel">
@@ -204,11 +204,11 @@
           <tr><td class="model-name">XGB</td><td><div class="bar-cell"><span>19.82</span><div class="bar-track"><div class="bar-fill" style="width:91%;"></div></div></div></td><td>0.44</td><td></td></tr>
           <tr><td class="model-name">CNN</td><td><div class="bar-cell"><span>5.29</span><div class="bar-track"><div class="bar-fill" style="width:24%;"></div></div></div></td><td class="r2-good">0.96</td><td></td></tr>
           <tr><td class="model-name">LSTM</td><td><div class="bar-cell"><span>10.41</span><div class="bar-track"><div class="bar-fill" style="width:48%;"></div></div></div></td><td class="r2-good">0.72</td><td></td></tr>
-          <tr class="top-row"><td class="model-name">RF-XGB</td><td><div class="bar-cell"><span>0.56</span><div class="bar-track"><div class="bar-fill" style="width:3%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
-          <tr><td class="model-name">CNN-LSTM ★</td><td><div class="bar-cell"><span>0.24</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr><td class="model-name">CNN-LSTM</td><td><div class="bar-cell"><span>0.56</span><div class="bar-track"><div class="bar-fill" style="width:3%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr class="top-row"><td class="model-name">RF-XGB ★</td><td><div class="bar-cell"><span>0.24</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
         </tbody>
       </table>
-      <div class="insight">On high-frequency daily data, sequence-aware and hybrid models dominate. Both hybrids (<b>CNN-LSTM</b> and <b>CNN-LSTM</b>) reach near-perfect fit, but <b>RF-XGB</b> edges ahead with the lowest RMSE ($0.24/bbl). Classical SVR and untuned tree models struggle with the daily noise level, R² capped around 0.3–0.5.</div>
+      <div class="insight">On high-frequency daily data, sequence-aware and hybrid models dominate. Both hybrids (<b>CNN-LSTM</b> and <b>RF-XGB</b>) reach near-perfect fit, but <b>RF-XGB</b> edges ahead with the lowest RMSE ($0.24/bbl). Classical SVR and untuned tree models struggle with the daily noise level, R² capped around 0.3–0.5.</div>
     </div>
 
   </div>
@@ -419,7 +419,7 @@
     'svg-daily', 'tooltip-daily',
     ['SVR', 'RF', 'XGB', 'CNN', 'LSTM', 'CNN-LSTM', 'RF-XGB'],
     [0.32, 0.51, 0.44, 0.96, 0.72, 1.00, 1.00],
-    [21.81, 18.52, 19.82, 5.29, 10.41, 0.24, 0.56],
+    [21.81, 18.52, 19.82, 5.29, 10.41, 0.56, 0.24],
     0, 1
   );
 
