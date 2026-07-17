@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crude Oil Price Forecast — Model Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1620;
+    --panel:#0f202c;
+    --panel-2:#132a38;
+    --line:#1f3947;
+    --text:#e8edf1;
+    --muted:#7d97a6;
+    --amber:#e3963e;
+    --amber-dim:#7a5c34;
+    --cyan:#4fd1c5;
+    --good:#6fcf97;
+    --bad:#e5686b;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 600px at 15% -10%, #122633 0%, var(--bg) 55%), var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    padding:28px 20px 40px;
+    min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+
+  .ticker{
+    display:flex; align-items:center; gap:10px;
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.12em;
+    color:var(--muted); text-transform:uppercase; margin-bottom:14px;
+  }
+  .dot{
+    width:7px;height:7px;border-radius:50%; background:var(--amber);
+    box-shadow:0 0 8px 1px rgba(227,150,62,.7);
+    animation:pulse 2.4s ease-in-out infinite; flex-shrink:0;
+  }
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.45;transform:scale(.8);}}
+
+  h1{
+    font-family:'Space Grotesk', sans-serif; font-weight:600;
+    font-size:clamp(22px,3.2vw,30px); margin:0 0 6px; letter-spacing:-.01em;
+  }
+  h1 span{color:var(--amber);}
+  .subtitle{color:var(--muted); font-size:14px; max-width:640px; line-height:1.55; margin-bottom:26px;}
+
+  .tabs{
+    display:inline-flex; background:var(--panel); border:1px solid var(--line);
+    border-radius:999px; padding:4px; margin-bottom:22px; gap:2px;
+  }
+  .tab{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+    padding:9px 20px; border-radius:999px; color:var(--muted); cursor:pointer; border:none;
+    background:transparent; transition:color .25s ease, background .25s ease;
+  }
+  .tab.active{color:#0a1620; background:var(--amber); font-weight:600;}
+  .tab:not(.active):hover{color:var(--text);}
+
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px;
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--muted);
+  }
+  .meta-chip{border:1px solid var(--line); border-radius:6px; padding:5px 10px; background:var(--panel);}
+  .meta-chip b{color:var(--text); font-weight:600;}
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; margin-bottom:16px;
+  }
+  .panel-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:14px; flex-wrap:wrap; gap:8px;
+  }
+  .panel-title{font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:600;}
+  .legend-note{font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--muted); display:flex; align-items:center; gap:14px;}
+  .legend-note .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+
+  .chart-box{
+    position:relative;
+    width:100%;
+  }
+  .chart-box svg{
+    width:100%;
+    height:auto;
+    display:block;
+    overflow:visible;
+  }
+  .chart-tooltip{
+    position:absolute;
+    pointer-events:none;
+    background:#0f202c;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color:var(--text);
+    opacity:0;
+    transition:opacity .12s ease;
+    white-space:nowrap;
+    z-index:5;
+  }
+  .chart-tooltip b{color:var(--amber);}
+  .chart-tooltip .cyan{color:var(--cyan);}
+
+  .winner{
+    display:flex; align-items:center; gap:16px;
+    background:linear-gradient(90deg, rgba(227,150,62,.14), rgba(227,150,62,.02));
+    border:1px solid var(--amber-dim); border-radius:var(--radius); padding:14px 18px; margin-bottom:16px;
+  }
+  .winner-badge{
+    font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--bg); background:var(--amber); padding:5px 10px; border-radius:5px; font-weight:700; white-space:nowrap;
+  }
+  .winner-text{font-size:13.5px; color:var(--text); line-height:1.5;}
+  .winner-text b{color:var(--amber); font-family:'JetBrains Mono', monospace;}
+
+  table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono', monospace; font-size:12.5px;}
+  thead th{
+    text-align:left; color:var(--muted); font-weight:500; text-transform:uppercase;
+    font-size:10.5px; letter-spacing:.08em; padding:10px 8px; border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:10px 8px; border-bottom:1px solid rgba(31,57,71,.6);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.top-row{background:rgba(227,150,62,.07);}
+  tbody tr:hover{background:rgba(79,209,197,.08);}
+  .model-name{color:var(--text); font-weight:600;}
+  .r2-good{color:var(--good);}
+  .r2-bad{color:var(--bad);}
+  .bar-cell{display:flex; align-items:center; gap:8px;}
+  .bar-track{flex:1; height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--cyan); border-radius:3px;}
+
+  .insight{font-size:13px; color:var(--muted); line-height:1.65; padding:16px 22px 20px;}
+  .insight b{color:var(--text);}
+
+  .footer-note{
+    text-align:center; font-family:'JetBrains Mono', monospace; font-size:10.5px;
+    color:var(--muted); margin-top:22px; opacity:.7;
+  }
+
+  .dataset-view{display:none;}
+  .dataset-view.active{display:block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="ticker"><span class="dot"></span>SAHARAN BLEND · 2000–2022 · 7 MODELS BENCHMARKED</div>
+
+  <h1>Crude Oil Price Forecast — <span>Model Performance</span></h1>
+  <p class="subtitle">Seven regression and deep learning models were trained to predict the Saharan Blend price, evaluated on held-out test data across two granularities. Switch between daily and monthly data — hover the chart for exact values.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-target="daily">Daily Data</button>
+    <button class="tab" data-target="monthly">Monthly Data</button>
+  </div>
+
+  <!-- ============ DAILY VIEW ============ -->
+  <div class="dataset-view active" id="view-daily">
+
+    <div class="meta-row">
+      <div class="meta-chip">Observations: <b>≈ 8,385 daily observations</b></div>
+      <div class="meta-chip">Split: <b>64% train · 16% val · 20% test</b></div>
+      <div class="meta-chip">Target: <b>Saharan Blend price ($/bbl)</b></div>
+    </div>
+
+    <div class="winner">
+      <div class="winner-badge">Best model</div>
+      <div class="winner-text"><b>RF-XGB</b> — RMSE <b>0.24</b> · R² <b>1.00</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Comparison of Regression Models — Daily data</div>
+        <div class="legend-note">
+          <span><span class="sw" style="background:#4fd1c5;"></span>R² (bars)</span>
+          <span><span class="sw" style="background:#e3963e;"></span>RMSE (line)</span>
+        </div>
+      </div>
+      <div class="chart-box" id="box-daily">
+        <svg id="svg-daily"></svg>
+        <div class="chart-tooltip" id="tooltip-daily"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;">
+      <div style="padding:22px 22px 4px;">
+        <div class="panel-title">Full results table</div>
+      </div>
+      <table>
+        <thead><tr><th>Model</th><th>RMSE ($/bbl)</th><th>R²</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="model-name">SVR</td><td><div class="bar-cell"><span>21.81</span><div class="bar-track"><div class="bar-fill" style="width:100%;"></div></div></div></td><td>0.32</td><td></td></tr>
+          <tr><td class="model-name">RF</td><td><div class="bar-cell"><span>18.52</span><div class="bar-track"><div class="bar-fill" style="width:85%;"></div></div></div></td><td>0.51</td><td></td></tr>
+          <tr><td class="model-name">XGB</td><td><div class="bar-cell"><span>19.82</span><div class="bar-track"><div class="bar-fill" style="width:91%;"></div></div></div></td><td>0.44</td><td></td></tr>
+          <tr><td class="model-name">CNN</td><td><div class="bar-cell"><span>5.29</span><div class="bar-track"><div class="bar-fill" style="width:24%;"></div></div></div></td><td class="r2-good">0.96</td><td></td></tr>
+          <tr><td class="model-name">LSTM</td><td><div class="bar-cell"><span>10.41</span><div class="bar-track"><div class="bar-fill" style="width:48%;"></div></div></div></td><td class="r2-good">0.72</td><td></td></tr>
+          <tr><td class="model-name">CNN-LSTM</td><td><div class="bar-cell"><span>0.56</span><div class="bar-track"><div class="bar-fill" style="width:3%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr class="top-row"><td class="model-name">RF-XGB ★</td><td><div class="bar-cell"><span>0.24</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="insight">On high-frequency daily data, sequence-aware and hybrid models dominate. Both hybrids (<b>CNN-LSTM</b> and <b>RF-XGB</b>) reach near-perfect fit, but <b>RF-XGB</b> edges ahead with the lowest RMSE ($0.24/bbl). Classical SVR and untuned tree models struggle with the daily noise level, R² capped around 0.3–0.5.</div>
+    </div>
+
+  </div>
+
+  <!-- ============ MONTHLY VIEW ============ -->
+  <div class="dataset-view" id="view-monthly">
+
+    <div class="meta-row">
+      <div class="meta-chip">Observations: <b>276 monthly observations</b></div>
+      <div class="meta-chip">Split: <b>64% train · 16% val · 20% test</b></div>
+      <div class="meta-chip">Target: <b>Saharan Blend price ($/bbl)</b></div>
+    </div>
+
+    <div class="winner">
+      <div class="winner-badge">Best model</div>
+      <div class="winner-text"><b>CNN-LSTM</b> — RMSE <b>0.21</b> · R² <b>1.00</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Comparison of Regression Models — Monthly data</div>
+        <div class="legend-note">
+          <span><span class="sw" style="background:#4fd1c5;"></span>R² (bars)</span>
+          <span><span class="sw" style="background:#e3963e;"></span>RMSE (line)</span>
+        </div>
+      </div>
+      <div class="chart-box" id="box-monthly">
+        <svg id="svg-monthly"></svg>
+        <div class="chart-tooltip" id="tooltip-monthly"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;">
+      <div style="padding:22px 22px 4px;">
+        <div class="panel-title">Full results table</div>
+      </div>
+      <table>
+        <thead><tr><th>Model</th><th>RMSE ($/bbl)</th><th>R²</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="model-name">SVR</td><td><div class="bar-cell"><span>21.69</span><div class="bar-track"><div class="bar-fill" style="width:100%;"></div></div></div></td><td>0.33</td><td></td></tr>
+          <tr><td class="model-name">RF</td><td><div class="bar-cell"><span>18.50</span><div class="bar-track"><div class="bar-fill" style="width:85%;"></div></div></div></td><td>0.51</td><td></td></tr>
+          <tr><td class="model-name">XGBoost</td><td><div class="bar-cell"><span>19.83</span><div class="bar-track"><div class="bar-fill" style="width:91%;"></div></div></div></td><td>0.44</td><td></td></tr>
+          <tr><td class="model-name">LSTM</td><td><div class="bar-cell"><span>2.01</span><div class="bar-track"><div class="bar-fill" style="width:9%;"></div></div></div></td><td class="r2-good">0.99</td><td></td></tr>
+          <tr><td class="model-name">CNN</td><td><div class="bar-cell"><span>1.58</span><div class="bar-track"><div class="bar-fill" style="width:7%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr class="top-row"><td class="model-name">CNN-LSTM ★</td><td><div class="bar-cell"><span>0.21</span><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div></div></td><td class="r2-good">1.00</td><td></td></tr>
+          <tr><td class="model-name">RF-XGB</td><td><div class="bar-cell"><span>19.44</span><div class="bar-track"><div class="bar-fill" style="width:90%;"></div></div></div></td><td>0.46</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="insight">On the monthly dataset, the pattern flips: deep learning models (<b>LSTM</b>, <b>CNN</b>, <b>CNN-LSTM</b>) achieve near-perfect fits with R² ≥ 0.99, and <b>CNN-LSTM</b> takes the top spot with an RMSE of just 0.21. Classical SVR and the RF-XGBoost hybrid trail well behind here, staying under R² = 0.5.</div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">TRAIN / VALIDATION / TEST SPLIT · METRICS COMPUTED ON UNSEEN TEST DATA</div>
+
+</div>
+
+<script>
+  // ---- Tab toggle ----
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.dataset-view').forEach(v=>v.classList.remove('active'));
+      document.getElementById('view-' + btn.dataset.target).classList.add('active');
+    });
+  });
+
+  // ---- Hand-drawn SVG combo chart: bars = R2 (left axis), line = RMSE (right axis) ----
+  // No external library required, so it renders anywhere (including offline previews).
+  function drawComboChart(svgId, tooltipId, labels, r2Vals, rmseVals, r2Min, r2Max){
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.getElementById(svgId);
+    const tooltip = document.getElementById(tooltipId);
+    const box = svg.closest('.chart-box');
+
+    const W = 800, H = 380;
+    const marginLeft = 46, marginRight = 46, marginTop = 16, marginBottom = 40;
+    const plotW = W - marginLeft - marginRight;
+    const plotH = H - marginTop - marginBottom;
+
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = '';
+
+    const n = labels.length;
+    const band = plotW / n;
+    const barW = band * 0.5;
+    const rmseMax = Math.max(...rmseVals) * 1.15;
+
+    function yR2(v){ return marginTop + plotH * (1 - (v - r2Min) / (r2Max - r2Min)); }
+    function yRmse(v){ return marginTop + plotH * (1 - v / rmseMax); }
+    function xCenter(i){ return marginLeft + band * i + band / 2; }
+
+    function el(tag, attrs){
+      const e = document.createElementNS(svgNS, tag);
+      for(const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    // gridlines + left/right axis ticks
+    const steps = 5;
+    for(let s=0; s<=steps; s++){
+      const frac = s/steps;
+      const yy = marginTop + plotH*frac;
+      svg.appendChild(el('line', { x1:marginLeft, x2:W-marginRight, y1:yy, y2:yy, stroke:'rgba(31,57,71,.6)', 'stroke-width':1 }));
+
+      const r2Val = r2Max - frac*(r2Max - r2Min);
+      const leftLabel = el('text', { x:marginLeft-8, y:yy+4, 'text-anchor':'end', fill:'#7d97a6', 'font-family':'JetBrains Mono, monospace', 'font-size':10.5 });
+      leftLabel.textContent = r2Val.toFixed(1);
+      svg.appendChild(leftLabel);
+
+      const rmseVal = rmseMax * (1-frac);
+      const rightLabel = el('text', { x:W-marginRight+8, y:yy+4, 'text-anchor':'start', fill:'#e3963e', 'font-family':'JetBrains Mono, monospace', 'font-size':10.5 });
+      rightLabel.textContent = rmseVal.toFixed(1);
+      svg.appendChild(rightLabel);
+    }
+
+    // zero baseline for bars (bold if r2Min < 0)
+    const zeroY = yR2(0);
+    if(r2Min < 0){
+      svg.appendChild(el('line', { x1:marginLeft, x2:W-marginRight, y1:zeroY, y2:zeroY, stroke:'rgba(232,237,241,.35)', 'stroke-width':1 }));
+    }
+
+    // bars (R2)
+    labels.forEach((lab, i)=>{
+      const val = r2Vals[i];
+      const cx = xCenter(i);
+      const yv = yR2(val);
+      const top = Math.min(zeroY, yv);
+      const h = Math.max(1, Math.abs(zeroY - yv));
+      const bar = el('rect', {
+        x: cx - barW/2, y: top, width: barW, height: h,
+        rx: 3, fill: 'rgba(79,209,197,.75)', 'data-base-fill':'rgba(79,209,197,.75)'
+      });
+      bar.style.cursor = 'pointer';
+      bar.addEventListener('mouseenter', (e)=>{
+        bar.setAttribute('fill', 'rgba(79,209,197,1)');
+        tooltip.innerHTML = `<b>${lab}</b><br><span class="cyan">R\u00b2: ${val.toFixed(2)}</span><br>RMSE: ${rmseVals[i].toFixed(2)}`;
+        tooltip.style.opacity = 1;
+        positionTooltip(e);
+      });
+      bar.addEventListener('mousemove', positionTooltip);
+      bar.addEventListener('mouseleave', ()=>{
+        bar.setAttribute('fill', 'rgba(79,209,197,.75)');
+        tooltip.style.opacity = 0;
+      });
+      function positionTooltip(e){
+        const rect = box.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+      }
+      svg.appendChild(bar);
+
+      const xLabel = el('text', { x:cx, y:H-marginBottom+20, 'text-anchor':'middle', fill:'#7d97a6', 'font-family':'JetBrains Mono, monospace', 'font-size':11 });
+      xLabel.textContent = lab;
+      svg.appendChild(xLabel);
+    });
+
+    // line (RMSE)
+    const points = labels.map((lab,i)=> `${xCenter(i)},${yRmse(rmseVals[i])}`).join(' ');
+    svg.appendChild(el('polyline', { points, fill:'none', stroke:'#e3963e', 'stroke-width':2.5, 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
+
+    labels.forEach((lab,i)=>{
+      const cx = xCenter(i);
+      const cy = yRmse(rmseVals[i]);
+      const dot = el('circle', { cx, cy, r:5, fill:'#e3963e', stroke:'#0f202c', 'stroke-width':2 });
+      dot.style.cursor = 'pointer';
+      dot.addEventListener('mouseenter', (e)=>{
+        dot.setAttribute('r', 7);
+        tooltip.innerHTML = `<b>${lab}</b><br><span class="cyan">R\u00b2: ${r2Vals[i].toFixed(2)}</span><br>RMSE: ${rmseVals[i].toFixed(2)}`;
+        tooltip.style.opacity = 1;
+        positionTooltipDot(e);
+      });
+      dot.addEventListener('mousemove', positionTooltipDot);
+      dot.addEventListener('mouseleave', ()=>{
+        dot.setAttribute('r', 5);
+        tooltip.style.opacity = 0;
+      });
+      function positionTooltipDot(e){
+        const rect = box.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+      }
+      svg.appendChild(dot);
+    });
+
+    // axis titles
+    const leftTitle = el('text', {
+      x:-(H/2), y:16, 'text-anchor':'middle', fill:'#7d97a6',
+      'font-family':'JetBrains Mono, monospace', 'font-size':11,
+      transform:'rotate(-90)'
+    });
+    leftTitle.textContent = 'R-squared';
+    svg.appendChild(leftTitle);
+
+    const rightTitle = el('text', {
+      x:(H/2), y:W-14, 'text-anchor':'middle', fill:'#e3963e',
+      'font-family':'JetBrains Mono, monospace', 'font-size':11,
+      transform:'rotate(90)'
+    });
+    rightTitle.textContent = 'RMSE';
+    svg.appendChild(rightTitle);
+  }
+
+  // Daily data
+  drawComboChart(
+    'svg-daily', 'tooltip-daily',
+    ['SVR', 'RF', 'XGB', 'CNN', 'LSTM', 'CNN-LSTM', 'RF-XGB'],
+    [0.32, 0.51, 0.44, 0.96, 0.72, 1.00, 1.00],
+    [21.81, 18.52, 19.82, 5.29, 10.41, 0.56, 0.24],
+    0, 1
+  );
+
+  // Monthly data
+  drawComboChart(
+    'svg-monthly', 'tooltip-monthly',
+    ['SVR', 'RF', 'XGBoost', 'LSTM', 'CNN', 'CNN-LSTM', 'RF-XGB'],
+    [0.33, 0.51, 0.44, 0.99, 1.00, 1.00, 0.46],
+    [21.69, 18.5, 19.83, 2.008, 1.58, 0.21, 19.44],
+    0, 1
+  );
+</script>
+</body>
+</html>
